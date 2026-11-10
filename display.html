@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compact Celestial UI Widget</title>
+    <style>
+        /* Modern dark background for the whole page */
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color, #0b0c10);
+            color: var(--text-color, #fff);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+            transition: background-color 0.3s;
+        }
+
+        body.light-theme {
+            --bg-color: #f0f2f5;
+            --text-color: #333;
+        }
+
+        .theme-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 86px;
+            height: 44px;
+            background-color: #313745;
+            border-radius: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+            padding: 5px;
+            transition: background-color 0.3s;
+        }
+
+        body.light-theme .theme-switch {
+            background-color: #f4f6f9;
+        }
+
+        .theme-switch svg {
+            width: 22px;
+            height: 22px;
+            position: absolute;
+            pointer-events: none;
+            transition: opacity 0.3s, color 0.3s;
+        }
+
+        .theme-switch .sun-icon {
+            left: 13px;
+            color: #313745;
+            opacity: 0;
+        }
+
+        body.light-theme .theme-switch .sun-icon {
+            opacity: 1;
+        }
+
+        .theme-switch .moon-icon {
+            right: 13px;
+            color: #f4f6f9;
+            opacity: 1;
+        }
+
+        body.light-theme .theme-switch .moon-icon {
+            opacity: 0;
+        }
+
+        .theme-switch .switch-knob {
+            width: 34px;
+            height: 34px;
+            background-color: #f4f6f9;
+            border-radius: 50%;
+            position: absolute;
+            left: 5px;
+            transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s;
+            z-index: 2;
+        }
+
+        body.light-theme .theme-switch .switch-knob {
+            left: 47px;
+            background-color: #313745;
+        }
+
+        /* Container without cube design */
+        .ui-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="themeToggle" class="theme-switch" role="button" aria-label="Toggle theme">
+        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <div class="switch-knob"></div>
+    </div>
+
+    <div class="ui-container">
+        <canvas id="spaceCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('spaceCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Fixed compact dimensions for UI widget
+        const width = 280;
+        const height = 280;
+        canvas.width = width;
+        canvas.height = height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        const themeToggle = document.getElementById('themeToggle');
+        let isLightMode = false;
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            isLightMode = document.body.classList.contains('light-theme');
+        });
+
+        const particles = [];
+        const particleCount = 1200; // Scaled down for compact size
+
+        class Particle {
+            constructor() {
+                // Scaled down radii for a tighter ring
+                const innerRadius = 45;
+                const outerRadius = 110;
+
+                const radiusRandomness = Math.random() + Math.random();
+                this.radius = innerRadius + (radiusRandomness / 2) * (outerRadius - innerRadius);
+
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = (Math.random() * 0.003) + 0.001;
+                this.size = Math.random() * 1.2 + 0.3;
+
+                // Sleek tech UI colors: Cyan & Deep Blue
+                const colorR = Math.floor(Math.random() * 20 + 10);
+                const colorG = Math.floor(Math.random() * 150 + 100);
+                const colorB = Math.floor(Math.random() * 55 + 200);
+                this.color = `rgba(${colorR}, ${colorG}, ${colorB}, `;
+
+                this.alpha = Math.random() * 0.8 + 0.2;
+
+                this.wobbleSpeed = Math.random() * 0.05;
+                this.wobbleAmount = Math.random() * 8;
+                this.baseRadius = this.radius;
+            }
+
+            update(time) {
+                this.angle += this.speed;
+                this.radius = this.baseRadius + Math.sin(time * this.wobbleSpeed) * this.wobbleAmount;
+            }
+
+            draw(ctx) {
+                const x = centerX + Math.cos(this.angle) * this.radius;
+                const y = centerY + Math.sin(this.angle) * this.radius;
+
+                ctx.beginPath();
+                ctx.arc(x, y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + this.alpha + ')';
+                ctx.fill();
+            }
+        }
+
+        // Initialize particles
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        // Draw the bright, glowing core
+        function drawCore(time) {
+            const pulse = Math.sin(time * 0.004) * 2;
+            const coreRadius = 18 + pulse;
+
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreRadius * 2);
+            
+            if (isLightMode) {
+                gradient.addColorStop(0, 'rgba(0, 100, 255, 1)');
+                gradient.addColorStop(0.3, 'rgba(0, 150, 255, 0.9)');
+                gradient.addColorStop(0.7, 'rgba(0, 200, 255, 0.4)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            } else {
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                gradient.addColorStop(0.3, 'rgba(100, 220, 255, 0.9)');
+                gradient.addColorStop(0.7, 'rgba(0, 100, 200, 0.4)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            }
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, coreRadius * 2, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        // Main animation loop
+        function animate(time) {
+            // Matches the background color to create clean, fading trails
+            ctx.globalCompositeOperation = "source-over";
+            ctx.fillStyle = isLightMode ? 'rgba(240, 242, 245, 0.35)' : 'rgba(11, 12, 16, 0.35)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.globalCompositeOperation = isLightMode ? "source-over" : "lighter";
+
+            drawCore(time);
+
+            particles.forEach(p => {
+                p.update(time);
+                p.draw(ctx);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+
+    </script>
+</body>
+
+</html>
